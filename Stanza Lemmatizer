@@ -1,0 +1,50 @@
+import stanza
+from spellchecker import SpellChecker
+from tqdm import tqdm
+
+spell = SpellChecker(language='fr', distance=2)
+
+def openFile(path):
+    with open(path, 'r', encoding='utf-8') as file:
+        content = file.read()
+    return content
+
+def writeFile(path, text):
+    with open(path, 'w', encoding='utf-8') as file:
+        file.write(text)
+
+nlp = stanza.Pipeline(lang='fr', processors='tokenize,pos,lemma',tokenize_pretokenized=True)
+
+sourcePath = 'Original.txt'
+goalPath = 'Final.txt'
+
+text = openFile(sourcePath)
+
+
+doc = nlp(text)
+
+newText = ''
+for sentence in doc.sentences:
+    for word in sentence.words:
+        newText = newText + word.lemma + '\n'
+
+
+parts = newText.split('\n')
+misspelled = spell.unknown(parts)
+fixParts = {}
+
+for word in tqdm(parts, desc= "spellchecking"):
+    if word in misspelled:
+        corrected = spell.correction(word)
+    else:
+        corrected = word
+    if corrected is None:
+        corrected = 'je'
+    if corrected in spell.known([corrected]):
+        fixParts[word] = corrected
+
+corrected_parts = [fixParts[word] for word in parts if word in fixParts]
+newParts = list(dict.fromkeys(corrected_parts))
+newWordlist = '\n'.join(newParts)
+
+writeFile(goalPath, newWordlist)
